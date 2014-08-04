@@ -6,7 +6,7 @@ module sparse
   
   ! Sparse matrix data type
   type :: sparse_t
-     
+     type(sparse_cell_ptr), allocatable, dimension(:) :: rows, cols
   end type sparse_t
 
   ! Sparse matrix cell data type
