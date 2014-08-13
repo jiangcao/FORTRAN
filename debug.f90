@@ -1,13 +1,26 @@
 module debug
-implicit none
+    implicit none
 
-  private
+    private
 
-  public :: myStop
+    public :: myStop,isDebug
 
 contains
-  subroutine myStop()
-    integer,allocatable :: p(:)
-    deallocate(p)
-  end subroutine myStop
+    logical Function isDebug()
+        character(len=1) :: arg
+        isDebug=.false.
+        if (command_argument_count().gt.0)then
+            call get_command_argument(1,arg)
+            if (arg.eq.'d')then
+                isDebug=.true.
+            endif
+        endif
+    end Function isDebug
+
+
+
+    subroutine myStop()
+        integer,allocatable :: p(:)
+        deallocate(p)
+    end subroutine myStop
 end module debug
