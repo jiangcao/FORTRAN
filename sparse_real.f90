@@ -1,4 +1,8 @@
 ! A real sparse matrix object
+
+!!! 
+!  Sparse data module
+!!!
 module sparse_data_mod
 implicit none
 type sparse_data
@@ -7,39 +11,49 @@ type sparse_data
 end type sparse_data
 contains
 function DATA_CREATE(i,r) result(d_ptr)
-type(sparse_data),pointer     :: d_ptr
-real,intent(in) :: r
-integer,intent(in) :: i
-allocate(d_ptr)
-d_ptr%r = r
-d_ptr%i = i
-return
+    type(sparse_data),pointer     :: d_ptr
+    real,intent(in) :: r
+    integer,intent(in) :: i
+    allocate(d_ptr)
+    d_ptr%r = r
+    d_ptr%i = i
+    return
 end function DATA_CREATE
 
 function DATA_COMPARE(d1,d2) result(b)
-type(sparse_data),pointer :: d1,d2
-logical :: b
-if ((d1%r.eq.d2%r).and.(d1%i.eq.d2%i)) then
-    b = .true.
-else 
-    b = .false.
-end if
+    type(sparse_data),pointer :: d1,d2
+    logical :: b
+    if ((d1%r.eq.d2%r).and.(d1%i.eq.d2%i)) then
+        b = .true.
+    else 
+        b = .false.
+    end if
 end function DATA_COMPARE
 
 subroutine DATA_FREE(d)
-type(sparse_data),pointer :: d
-deallocate(d)
-nullify(d)
+    type(sparse_data),pointer :: d
+    deallocate(d)
+    nullify(d)
 end subroutine DATA_FREE
 end module sparse_data_mod
+!!!!!
 
+
+!!!
+!  Sparse line module, using Linked List template
+!!!
 module sparse_line_mod
-    use sparse_data_mod, LIST_DATA => sparse_data
-    implicit none
-    include "linked_list_template.f90"
+use sparse_data_mod, LIST_DATA => sparse_data
+implicit none
+include "linked_list_template.f90"
 end module sparse_line_mod
+!!!!!
 
-module sparse_real
+
+!!!
+!  Sparse Matrix module
+!!!
+module sparse_real_mod
 use sparse_line_mod, LINE_t => LINKED_LIST
 use sparse_data_mod
 use debug
@@ -47,7 +61,7 @@ implicit none
 private
 
 ! Data type
-public :: sparse_t
+public :: sparse_real
 ! Constructor and Destructor
 public :: sparse_free
 public :: sparse_create
@@ -66,18 +80,18 @@ type line_ptr
     type(line_t),pointer :: p => null()
 end type line_ptr
 
-type sparse_t
+type sparse_real
     private
     integer :: nrow,ncol,nnz
     character(len=1) :: main_axe
     type(line_ptr), allocatable, dimension(:) :: rows, cols
-end type sparse_t
+end type sparse_real
 
 contains
 
 ! Construct an empty LIL sparse matrix
 function sparse_create(nrow,ncol,axe) result(self)
-type(sparse_t), pointer :: self
+type(sparse_real), pointer :: self
 character(len=1),intent(in):: axe
 integer,intent(in) :: nrow, ncol
 integer :: i
@@ -106,7 +120,7 @@ end function sparse_create
 
 ! Free a LIL sparse matrix
 subroutine sparse_free(self)
-type(sparse_t),pointer :: self
+type(sparse_real),pointer :: self
 integer :: i
 if (self%main_axe .eq. 'r') then
     do i = 1, self%nrow
@@ -123,7 +137,7 @@ end subroutine sparse_free
 
 ! Put a value in the LIL sparse matrix 
 subroutine sparse_put(self, row, col, val)
-type(sparse_t),pointer :: self
+type(sparse_real),pointer :: self
 integer,intent(in) :: row, col
 type(line_t),pointer :: ptr
 type(sparse_data),pointer :: dptr,dptr2
@@ -175,7 +189,7 @@ end subroutine sparse_put
 
 ! Get a value from the LIL sparse matrix
 function sparse_get(self,row,col,find) result(val)
-type(sparse_t),pointer :: self
+type(sparse_real),pointer :: self
 integer,intent(in) :: row, col
 logical,intent(out),optional :: find 
 real(8) :: val
@@ -219,14 +233,14 @@ end function sparse_get
 
 ! Get the NNZ of a LIL sparse matrix 
 function sparse_nnz(self) result(nnz) 
-type(sparse_t),pointer :: self
+type(sparse_real),pointer :: self
 integer :: nnz 
 nnz = self%nnz 
 end function sparse_nnz
 
 ! Get the size of a LIL sparse matrix 
 function sparse_size(self, dim) result(n) 
-type(sparse_t),pointer :: self
+type(sparse_real),pointer :: self
 integer,intent(in) :: dim 
 integer :: n 
 if (dim.eq.1) then
@@ -238,7 +252,7 @@ end function sparse_size
 
 ! Verify is the index is in the bondary
 function badIndex(self,row,col)
-type(sparse_t),pointer :: self
+type(sparse_real),pointer :: self
 integer, intent(in) :: row,col 
 logical :: badIndex
 if ((row.lt.1).or.(col.lt.1).or.(row.gt.self%nrow).or.(col.gt.self%ncol)) then 
@@ -250,7 +264,7 @@ end function badIndex
 
 !Get CSR format of a sparse LIL matrix
 subroutine sparse_to_csr(self,values,columns,rowIndex)
-type(sparse_t),pointer :: self
+type(sparse_real),pointer :: self
 real(8),dimension(:),intent(out) :: values
 integer,dimension(:),intent(out) :: columns,rowIndex
 type(line_t),pointer :: cell
@@ -290,7 +304,7 @@ end subroutine sparse_to_csr
 
 ! Get the row array of a real sparse LIL matrix
 subroutine sparse_Row(self,row,rowarray)
-type(sparse_t),pointer :: self 
+type(sparse_real),pointer :: self 
 integer,intent(in) :: row 
 real(8),intent(out) :: rowarray(:)
 type(line_t),pointer :: cell
@@ -318,7 +332,7 @@ end subroutine sparse_Row
 
 ! Get the col array of a real sparse LIL matrix
 subroutine sparse_Col(self,col,colarray)
-type(sparse_t),pointer :: self 
+type(sparse_real),pointer :: self 
 integer,intent(in) :: col
 real(8),intent(out) :: colarray(:)
 type(line_t),pointer :: cell
@@ -343,6 +357,4 @@ else
     end do
 end if
 end subroutine sparse_Col
-
-
-end module sparse_real
+end module sparse_real_mod

@@ -1,5 +1,5 @@
 program sparse_test 
-use sparse_real 
+use sparse_real_mod
 implicit none 
 integer :: i,j
 real(8) :: b
@@ -7,7 +7,7 @@ real(8),allocatable :: x(:),a(:)
 integer,allocatable :: ja(:),ia(:)
 logical :: find
 
-type(sparse_t),pointer :: sA
+type(sparse_real),pointer :: sA
 
 
 write(*,*) "Test Sparse module"
