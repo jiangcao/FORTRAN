@@ -26,8 +26,10 @@ public :: graph_node_free
 public :: graph_arc_free
 public :: graph_free
 !!! Methodes
-!public :: graph_node_list_add
-!public :: graph_arc_list_add
+public :: graph_node_list_add
+public :: graph_arc_list_add
+public :: graph_node_list_get
+public :: graph_arc_list_get
 public :: graph_add_node
 public :: graph_connect_nodes
 public :: graph_node_get_data
@@ -74,7 +76,6 @@ type GRAPH_NODE_LIST
 end type GRAPH_NODE_LIST
 
 type GRAPH
-    private
     type(GRAPH_NODE_LIST),pointer  :: node_list => null()
     type(GRAPH_ARC_LIST),pointer   :: arc_list => null()
 end type GRAPH
@@ -154,34 +155,41 @@ contains
         nullify(this)
     end subroutine graph_arc_list_free
 
-    subroutine graph_node_free(this) 
-        type(GRAPH_NODE), pointer :: this
+    subroutine graph_node_free(this,freedata) 
+        type(GRAPH_NODE), pointer   :: this
+        logical,intent(in)          :: freedata 
         if (not(associated(this))) return
-        call NODE_data_free(this%data)
+        if (freedata .eq. .true.) then
+            call NODE_data_free(this%data)
+        end if
         call graph_arc_list_free(this%left)
         call graph_arc_list_free(this%right)
         deallocate(this)
         nullify(this)
     end subroutine graph_node_free
 
-    subroutine graph_arc_free(this)
+    subroutine graph_arc_free(this,freedata)
         type(GRAPH_ARC),pointer :: this
+        logical,intent(in)      :: freedata
         if (not(associated(this))) return
-        call ARC_data_free(this%data)
+        if (freedata .eq. .true.) then
+            call ARC_data_free(this%data)
+        end if
         deallocate(this)
         nullify(this)
     end subroutine graph_arc_free
 
-    subroutine graph_free(this)
+    subroutine graph_free(this,freeNodeData,freeArcData)
         type(GRAPH),pointer :: this
+        logical,intent(in)  :: freeNodeData,freeArcData
         integer :: i
         if (not(associated(this))) return
         do i = 1,this%node_list%logic_len  ! free nodes
-        call graph_node_free(this%node_list%nodes(i)%pt)
+        call graph_node_free(this%node_list%nodes(i)%pt,freeNodeData)
         end do
         call graph_node_list_free(this%node_list)      ! free nodes list
         do i = 1,this%arc_list%logic_len  ! free arcs
-        call graph_arc_free(this%arc_list%arcs(i)%pt)
+        call graph_arc_free(this%arc_list%arcs(i)%pt,freeArcData)
         end do
         call graph_arc_list_free(this%arc_list)       ! free arcs list
         deallocate(this)
@@ -208,6 +216,15 @@ contains
         this%nodes(this%logic_len)%pt => new_node 
     end subroutine graph_node_list_add
 
+    function graph_node_list_get(this,ind) result(node)
+        type(GRAPH_NODE_LIST),pointer :: this
+        integer,intent(in)            :: ind
+        type(GRAPH_NODE),pointer      :: node
+        node => this%nodes(ind)%pt
+        return
+    end function graph_node_list_get
+
+
     subroutine graph_arc_list_add(this, new_arc)
         type(GRAPH_ARC_LIST),pointer :: this
         type(GRAPH_ARC),pointer      :: new_arc
@@ -222,6 +239,14 @@ contains
         end if
         this%arcs(this%logic_len)%pt => new_arc
     end subroutine graph_arc_list_add
+
+    function graph_arc_list_get(this, ind) result(arc)
+        type(GRAPH_ARC_LIST),pointer :: this
+        integer,intent(in)           :: ind
+        type(GRAPH_ARC),pointer      :: arc
+        arc => this%arcs(ind)%pt
+        return
+    end function graph_arc_list_get
 
     subroutine graph_add_node(this,new_node)
         type(GRAPH),pointer :: this 
@@ -270,18 +295,11 @@ contains
         type(GRAPH_ARC),pointer     :: arc
         character(len=1),intent(in) :: side 
         integer,intent(in)          :: ind
-        integer                     :: i
-        i = ind
-        nullify(arc)
-        if (ind.lt.1) i = 1
+        arc => null()
         if (side.eq.'l') then
-            if (this%left%logic_len .eq. 0) return           
-            if (ind.gt.this%left%logic_len) i = this%left%logic_len
-            arc => this%left%arcs(i)%pt
+            arc => this%left%arcs(ind)%pt
         else 
-            if (this%right%logic_len .eq. 0) return
-            if (ind.gt.this%right%logic_len) i = this%right%logic_len
-            arc => this%right%arcs(i)%pt
+            arc => this%right%arcs(ind)%pt
         end if
         return
     end function graph_node_get_arc
@@ -300,8 +318,9 @@ contains
 
     function graph_arc_get_node(this,side) result(node)
         type(GRAPH_ARC), pointer :: this 
-        type(GRAPH_NODE), pointer :: node 
+        type(GRAPH_NODE), pointer :: node
         character(len=1),intent(in) :: side 
+        node => null()
         if (side.eq.'l') then 
             node => this%left_node
         else 

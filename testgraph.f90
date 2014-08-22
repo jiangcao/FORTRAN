@@ -57,7 +57,7 @@ program test_graph
 
 
 
-      call graph_free(g)
+      call graph_free(g,.true.,.true.)
 
 
   end program test_graph
