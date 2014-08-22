@@ -6,7 +6,7 @@
 !         data_free(LIST_DATA,pointer :: d)
 
 private
-public LINKED_LIST, list_create, list_free, list_next, list_prev, list_insert_after, list_insert_at_index, list_pop, list_find_node,list_find_data,list_get_from_node,list_get_from_index
+public LINKED_LIST, list_create, list_free, list_next, list_prev, list_insert_after, list_insert_at_index, list_pop, list_find_node,list_find_data,list_get_from_node,list_get_from_index,list_put
 
 type LINKED_LIST
     type(LIST_DATA),pointer   :: data => null()
