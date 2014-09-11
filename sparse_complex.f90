@@ -65,7 +65,7 @@ public :: sparse_complex
 ! Constructor and Destructor
 public :: sparse_free
 public :: sparse_create
-
+public :: sparse_convert
 ! Methods
 public :: sparse_nnz 
 public :: sparse_size
@@ -74,6 +74,7 @@ public :: sparse_get
 public :: sparse_Row
 public :: sparse_Col
 public :: sparse_to_csr
+public :: sparse_pardiso
 
 
 type line_ptr
@@ -89,9 +90,78 @@ end type sparse_complex
 
 contains
 
+subroutine sparse_pardiso(this,x,b)
+    type(sparse_complex), pointer :: this
+    complex(8),intent(in) :: b(:)
+    complex(8),intent(out):: x(:)
+    integer :: iparm(64),solver
+    real*8 :: dparm(64)
+    integer*8 :: pt(64)
+    complex*16,allocatable :: a(:)
+    INTEGER,allocatable :: ia(:)
+    INTEGER,allocatable :: ja(:)
+
+    
+    if (size(b).ne.this%nrow) then
+        write(*,*)'vector b has incorrect size'
+        call myStop()
+    end if
+
+    if (size(x).ne.this%ncol) then
+        write(*,*)'vector x has incorrect size'
+        call myStop()
+    end if
+
+    mtype     = 13  ! complex unsymmetric 
+    solver    =  0  ! use sparse direct method
+
+    call pardisoinit(pt, mtype, solver, iparm, dparm, error)
+    IF (error .NE. 0) THEN
+        IF (error.EQ.-10 ) WRITE(*,*) 'No license file found'
+        IF (error.EQ.-11 ) WRITE(*,*) 'License is expired'
+        IF (error.EQ.-12 ) WRITE(*,*) 'Wrong
+        username or hostname'
+        STOP
+    ELSE
+        WRITE(*,*)
+        '[PARDISO]:
+        License check
+        was successful
+        ... '
+    END IF
+
+    allocate(a(this%nnz))
+    allocate(ja(this%nnz))
+    allocate(ia(this%nrow + 1))
+
+end subroutine sparse_pardiso
+    
+function sparse_convert(A,tol) result(self)
+    type(sparse_complex), pointer :: self
+    real(8),intent(in) :: tol
+    complex(8),intent(in) :: A(:,:)
+    integer :: nc,nr,i,j
+    type(line_t),pointer :: ptr
+    type(sparse_data),pointer :: dptr
+    nr = size(A,1)
+    nc = size(A,2)
+    self => sparse_create(nr,nc,'r')
+    do i = 1,nr
+    ptr => self%rows(i)%p
+    do j = 1,nc
+       if (abs(A(i,j)).gt.tol)then
+           dptr => data_create(j,A(i,j))
+           call list_insert_after(ptr,dptr)
+           ptr => list_next(ptr)
+           self%nnz = self%nnz + 1
+       end if
+    enddo
+    enddo
+end function sparse_convert
+
 ! Construct an empty LIL sparse matrix
 function sparse_create(nrow,ncol,axe) result(self)
-    type(sparse_real), pointer :: self
+    type(sparse_complex), pointer :: self
     character(len=1),intent(in):: axe
     integer,intent(in) :: nrow, ncol
     integer :: i
@@ -120,7 +190,7 @@ end function sparse_create
 
 ! Free a LIL sparse matrix
 subroutine sparse_free(self)
-    type(sparse_real),pointer :: self
+    type(sparse_complex),pointer :: self
     integer :: i
     if (self%main_axe .eq. 'r') then
         do i = 1, self%nrow
@@ -137,7 +207,7 @@ end subroutine sparse_free
 
 ! Put a value in the LIL sparse matrix 
 subroutine sparse_put(self, row, col, val)
-    type(sparse_real),pointer :: self
+    type(sparse_complex),pointer :: self
     integer,intent(in) :: row, col
     type(line_t),pointer :: ptr
     type(sparse_data),pointer :: dptr,dptr2
@@ -189,7 +259,7 @@ end subroutine sparse_put
 
 ! Get a value from the LIL sparse matrix
 function sparse_get(self,row,col,find) result(val)
-    type(sparse_real),pointer :: self
+    type(sparse_complex),pointer :: self
     integer,intent(in) :: row, col
     logical,intent(out),optional :: find 
     complex(8) :: val
@@ -233,14 +303,14 @@ end function sparse_get
 
 ! Get the NNZ of a LIL sparse matrix 
 function sparse_nnz(self) result(nnz) 
-    type(sparse_real),pointer :: self
+    type(sparse_complex),pointer :: self
     integer :: nnz 
     nnz = self%nnz 
 end function sparse_nnz
 
 ! Get the size of a LIL sparse matrix 
 function sparse_size(self, dim) result(n) 
-    type(sparse_real),pointer :: self
+    type(sparse_complex),pointer :: self
     integer,intent(in) :: dim 
     integer :: n 
     if (dim.eq.1) then
@@ -252,7 +322,7 @@ end function sparse_size
 
 ! Verify is the index is in the bondary
 function badIndex(self,row,col)
-    type(sparse_real),pointer :: self
+    type(sparse_complex),pointer :: self
     integer, intent(in) :: row,col 
     logical :: badIndex
     if ((row.lt.1).or.(col.lt.1).or.(row.gt.self%nrow).or.(col.gt.self%ncol)) then 
@@ -264,7 +334,7 @@ end function badIndex
 
 !Get CSR format of a sparse LIL matrix
 subroutine sparse_to_csr(self,values,columns,rowIndex)
-    type(sparse_real),pointer :: self
+    type(sparse_complex),pointer :: self
     complex(8),dimension(:),intent(out) :: values
     integer,dimension(:),intent(out) :: columns,rowIndex
     type(line_t),pointer :: cell
@@ -304,7 +374,7 @@ end subroutine sparse_to_csr
 
 ! Get the row array of a real sparse LIL matrix
 subroutine sparse_Row(self,row,rowarray)
-    type(sparse_real),pointer :: self 
+    type(sparse_complex),pointer :: self 
     integer,intent(in) :: row 
     complex(8),intent(out) :: rowarray(:)
     type(line_t),pointer :: cell
@@ -332,7 +402,7 @@ end subroutine sparse_Row
 
 ! Get the col array of a real sparse LIL matrix
 subroutine sparse_Col(self,col,colarray)
-    type(sparse_real),pointer :: self 
+    type(sparse_complex),pointer :: self 
     integer,intent(in) :: col
     complex(8),intent(out) :: colarray(:)
     type(line_t),pointer :: cell
